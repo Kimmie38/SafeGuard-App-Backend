@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, param, query, validationResult } = require('express-validator');
 const Report = require('../models/Report');
+const User = require('../models/User');
 const { nextSequence } = require('../models/Counter');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { REGIONS } = require('../config/regions');
@@ -147,7 +148,11 @@ router.get('/:id', [param('id').notEmpty()], async (req, res, next) => {
 
 /**
  * PATCH /api/reports/:id/status
- * Admin-only, matches manage.tsx's "Mark as ..." action.
+ * Area-chairman-only, matches manage.tsx's "Mark as ..." action. Scoped to
+ * the chairman's own coverage area (User.estate) - looked up fresh from the
+ * database rather than trusted from the JWT, so reassigning someone's
+ * coverage area takes effect immediately rather than waiting out their
+ * existing token.
  */
 router.patch(
   '/:id/status',
@@ -163,6 +168,13 @@ router.patch(
 
       const report = await Report.findOne({ id: req.params.id });
       if (!report) return res.status(404).json({ error: 'Report not found' });
+
+      const admin = await User.findById(req.user.id);
+      if (!admin || !admin.estate || admin.estate !== report.region) {
+        return res.status(403).json({
+          error: 'You can only manage reports in your own coverage area.',
+        });
+      }
 
       report.status = req.body.status;
       report.statusHistory.push({ status: req.body.status, changedBy: req.user.id });
