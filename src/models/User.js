@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const { REGIONS } = require('../config/regions');
 
 const userSchema = new mongoose.Schema(
   {
@@ -13,14 +12,12 @@ const userSchema = new mongoose.Schema(
       index: true,
     },
     phone: { type: String, trim: true, default: null },
-
-    // Replaces the old free-text `estate` field - the frontend's
-    // register.tsx and login.tsx both use a dropdown scoped to the 10
-    // Jos, Plateau State regions in constants/theme.ts, not free text.
-    // For a resident this is "my area"; for an admin it's their coverage
-    // area. Required so every account can always be region-scoped.
-    region: { type: String, enum: REGIONS, required: true, index: true },
-
+    // Free text, but in practice this is the resident/admin's region
+    // (e.g. "Terminus") - the frontend's login/register "area" picker
+    // writes here, and every "mine" vs "all of Jos" scope in the UI reads
+    // this back as `userRegion`. Left as free text rather than an enum so
+    // an out-of-list estate name doesn't hard-fail registration.
+    estate: { type: String, trim: true, default: null },
     passwordHash: { type: String, required: true, select: false },
     role: { type: String, enum: ['resident', 'admin'], default: 'resident' },
   },
@@ -29,6 +26,8 @@ const userSchema = new mongoose.Schema(
 
 userSchema.methods.toSafeJSON = function toSafeJSON() {
   const obj = this.toObject();
+  obj.id = obj._id.toString();
+  delete obj._id;
   delete obj.passwordHash;
   delete obj.__v;
   return obj;

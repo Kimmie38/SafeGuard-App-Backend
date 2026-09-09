@@ -1,8 +1,11 @@
-// Mirrors the frontend's REGIONS list in constants/theme.ts exactly.
-// SafeGuard is scoped to Jos, Plateau State for this build - keep this
-// list in sync with the frontend if that ever changes.
-const STATE_NAME = 'Plateau State';
-
+/**
+ * Must stay in sync with REGIONS in the frontend's constants/theme.ts.
+ * SafeGuard is scoped to Jos, Plateau State for this build - every
+ * resident/admin picks one of these areas, and reports/alerts are tagged
+ * with one so the "mine" vs "all of Jos" scoping used throughout the
+ * frontend (home, feed, alerts, manage, admin dashboard) has something
+ * real to filter on.
+ */
 const REGIONS = [
   'Jos North',
   'Jos South',
@@ -16,4 +19,4 @@ const REGIONS = [
   'Bauchi Road',
 ];
 
-module.exports = { REGIONS, STATE_NAME };
+module.exports = { REGIONS };

@@ -9,7 +9,7 @@ const router = express.Router();
 
 function signToken(user) {
   return jwt.sign(
-    { id: user._id.toString(), role: user.role, name: user.name, region: user.region },
+    { id: user._id.toString(), role: user.role, name: user.name },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
@@ -17,16 +17,16 @@ function signToken(user) {
 
 /**
  * POST /api/auth/register
- * Matches the frontend's register form: name, email, phone, region,
- * password (`confirm` is frontend-only and never sent). `region` is the
- * area dropdown scoped to Jos, Plateau State - required, since every
- * account needs to be region-scoped for the frontend's "my area vs. all
- * of Jos" toggles to work.
- * Registers a resident by default. Passing a valid adminCode registers an
- * admin instead - the current frontend prototype doesn't send this (its
- * login screen just has a Resident/Admin toggle with no real auth), so for
- * now admin accounts should be created directly in the database or via this
- * endpoint with the code, until the frontend is wired to a real admin flow.
+ * Matches the frontend's register form: name, email, phone, area, password.
+ * `region` is accepted as the primary field name (matching the register
+ * screen's area picker, which uses values from REGIONS) and stored on
+ * `estate` - `estate` is also accepted directly for API callers that
+ * prefer that name. Registers a resident by default. Passing a valid
+ * adminCode registers an admin instead - the current frontend prototype
+ * doesn't send this (its login screen just has a Resident/Admin toggle
+ * with no real auth), so for now admin accounts should be created
+ * directly in the database or via this endpoint with the code, until the
+ * frontend is wired to a real admin flow.
  */
 router.post(
   '/register',
@@ -35,7 +35,8 @@ router.post(
     body('email').trim().isEmail().withMessage('A valid email is required').normalizeEmail(),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     body('phone').optional().trim(),
-    body('region').isIn(REGIONS).withMessage(`region must be one of: ${REGIONS.join(', ')}`),
+    body('estate').optional().trim(),
+    body('region').optional().isIn(REGIONS).withMessage(`region must be one of: ${REGIONS.join(', ')}`),
     body('adminCode').optional().isString(),
   ],
   async (req, res, next) => {
@@ -45,7 +46,7 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { name, email, password, phone, region, adminCode } = req.body;
+      const { name, email, password, phone, estate, region, adminCode } = req.body;
 
       const existing = await User.findOne({ email });
       if (existing) {
@@ -59,7 +60,7 @@ router.post(
         name,
         email,
         phone: phone || null,
-        region,
+        estate: region || estate || null,
         passwordHash,
         role,
       });
@@ -76,12 +77,6 @@ router.post(
 
 /**
  * POST /api/auth/login
- * The frontend's login screen also shows a region dropdown ("your area" /
- * "coverage area"), same as its Resident/Admin toggle - with real auth,
- * region comes from the account (set at registration), not a client-side
- * picker. This endpoint ignores any region sent in the body; the frontend
- * should switch to reading `user.region` from this response, same as it
- * already needs to do for `user.role`.
  */
 router.post(
   '/login',

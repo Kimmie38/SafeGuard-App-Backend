@@ -28,6 +28,7 @@ router.patch(
   [
     body('name').optional().trim().notEmpty(),
     body('phone').optional().trim(),
+    body('estate').optional().trim(),
     body('region').optional().isIn(REGIONS).withMessage(`region must be one of: ${REGIONS.join(', ')}`),
   ],
   async (req, res, next) => {
@@ -40,10 +41,11 @@ router.patch(
       const user = await User.findById(req.user.id);
       if (!user) return res.status(404).json({ error: 'User not found' });
 
-      const { name, phone, region } = req.body;
+      const { name, phone, estate, region } = req.body;
       if (name !== undefined) user.name = name;
       if (phone !== undefined) user.phone = phone;
-      if (region !== undefined) user.region = region;
+      if (region !== undefined) user.estate = region;
+      else if (estate !== undefined) user.estate = estate;
 
       await user.save();
       res.json({ user: user.toSafeJSON() });

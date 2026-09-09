@@ -21,11 +21,11 @@ async function generatePublicId() {
  * POST /api/reports
  * Matches the frontend's report.tsx submission: category, title,
  * description, location (free text), severity, images (array of already-
- * uploaded URLs - see POST /api/uploads/images). Always created as 'Active',
- * reporter name AND region snapshotted from the logged-in user - the
- * report form itself has no region field, exactly like AppContext's
- * addReport() pulls `region: userRegion` from context rather than the
- * submitted form data.
+ * uploaded URLs - see POST /api/uploads/images), plus `region` (the
+ * reporter's own area, e.g. "Terminus" - the report form doesn't ask for
+ * this directly, so the frontend should send the logged-in user's
+ * `userRegion` automatically). Always created as 'Active', reporter name
+ * snapshotted from the logged-in user.
  */
 router.post(
   '/',
@@ -34,6 +34,7 @@ router.post(
     body('title').trim().notEmpty().isLength({ max: 140 }),
     body('description').trim().notEmpty().isLength({ max: 2000 }),
     body('location').trim().notEmpty(),
+    body('region').isIn(REGIONS).withMessage(`region must be one of: ${REGIONS.join(', ')}`),
     body('severity').optional().isIn(SEVERITIES),
     body('images').optional().isArray({ max: 5 }),
     body('images.*').optional().isString(),
@@ -46,7 +47,7 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { category, title, description, location, severity, images, anonymous } = req.body;
+      const { category, title, description, location, region, severity, images, anonymous } = req.body;
       const id = await generatePublicId();
 
       const report = new Report({
@@ -55,7 +56,7 @@ router.post(
         title,
         description,
         location,
-        region: req.user.region,
+        region,
         severity: severity || 'Medium',
         images: images || [],
         status: 'Active',
@@ -77,11 +78,9 @@ router.post(
  * Community-wide feed (matches feed.tsx / home screens - full detail is
  * visible to every resident, no anonymization in this design).
  * Query params: category, status, region, sort ("latest" default | "severity")
- * `region` is optional - the frontend currently fetches everything and does
- * its "my area vs. all of Jos" filtering client-side (Home, Feed, Alerts,
- * Manage all do this), so this param isn't required for a drop-in swap.
- * It's here so that filtering can move server-side later without an API
- * change, e.g. once report volume makes client-side filtering wasteful.
+ * `region` is optional - the frontend currently fetches everything and
+ * filters "mine" vs "all of Jos" client-side, but it's exposed here too
+ * for a lighter-weight server-side filter if that ever changes.
  */
 router.get(
   '/',

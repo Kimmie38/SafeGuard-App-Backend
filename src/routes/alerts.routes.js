@@ -1,7 +1,8 @@
 const express = require('express');
-const { body, param, validationResult } = require('express-validator');
+const { body, param, query, validationResult } = require('express-validator');
 const Alert = require('../models/Alert');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { REGIONS } = require('../config/regions');
 
 const { ALERT_TYPES } = Alert;
 
@@ -11,16 +12,34 @@ router.use(authenticate);
 /**
  * GET /api/alerts
  * Flat notification feed, matches alerts.tsx (All / Emergencies /
- * Announcements / Updates tabs are filtered client-side by `type`).
+ * Announcements / Updates tabs are filtered client-side by `type`, and
+ * "mine" vs "all of Jos" is filtered client-side by `region`, same as
+ * reports - so this returns everything by default). An optional `region`
+ * query param is supported for a lighter server-side fetch if needed.
  */
-router.get('/', async (req, res, next) => {
-  try {
-    const alerts = await Alert.find().sort({ createdAt: -1 });
-    res.json({ alerts });
-  } catch (err) {
-    next(err);
+router.get(
+  '/',
+  [query('region').optional().isIn(REGIONS)],
+  async (req, res, next) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+      const filter = {};
+      if (req.query.region) {
+        // Alerts with no region are global and always included alongside
+        // whatever region was asked for, mirroring alerts.tsx's own
+        // `!a.region || a.region === userRegion` check.
+        filter.$or = [{ region: null }, { region: req.query.region }];
+      }
+
+      const alerts = await Alert.find(filter).sort({ createdAt: -1 });
+      res.json({ alerts });
+    } catch (err) {
+      next(err);
+    }
   }
-});
+);
 
 /**
  * POST /api/alerts
@@ -37,9 +56,7 @@ router.post(
     body('title').trim().notEmpty().isLength({ max: 140 }),
     body('message').trim().notEmpty().isLength({ max: 500 }),
     body('relatedReportId').optional().isString(),
-    // Not restricted to the REGIONS enum - see the note on Alert.region.
-    // Omit it for an all-of-Jos announcement.
-    body('region').optional().isString().trim(),
+    body('region').optional({ nullable: true }).isIn(REGIONS),
   ],
   async (req, res, next) => {
     try {

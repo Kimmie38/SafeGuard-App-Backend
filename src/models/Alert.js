@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { REGIONS } = require('../config/regions');
 
 const ALERT_TYPES = ['Emergency', 'Update', 'Announcement'];
 
@@ -16,22 +17,31 @@ const alertSchema = new mongoose.Schema(
     // README flags its other "next steps if you want it real" items.
     unread: { type: Boolean, default: true },
 
+    // Matches alerts.tsx's scoping: an alert with no region is shown to
+    // everyone ("All of Jos"); one with a region is only shown when it
+    // matches the viewer's own region ("mine").
+    region: { type: String, enum: REGIONS, default: null },
+
     relatedReportId: { type: String, default: null }, // links to Report.id, e.g. "ER-2024-001"
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-
-    // Powers alerts.tsx's "my area vs. all of Jos" toggle
-    // (`!a.region || a.region === userRegion`). Left as free text rather
-    // than the Report/User `REGIONS` enum: the frontend's own seed data
-    // uses this for area-ish labels that aren't always one of the 10
-    // dropdown regions (e.g. "Naraguta" in data/alerts.json), and a
-    // system-wide announcement can also just omit it entirely (null =
-    // visible to everyone, matching that same client-side check).
-    region: { type: String, trim: true, default: null },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      transform: (doc, ret) => {
+        // The frontend's AlertItem type expects a plain string `id`
+        // (it never deals with Mongo's `_id`/`__v`).
+        ret.id = ret._id.toString();
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      },
+    },
+  }
 );
 
 alertSchema.index({ createdAt: -1 });
+alertSchema.index({ region: 1 });
 
 module.exports = mongoose.model('Alert', alertSchema);
 module.exports.ALERT_TYPES = ALERT_TYPES;

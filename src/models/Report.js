@@ -36,15 +36,16 @@ const reportSchema = new mongoose.Schema(
     severity: { type: String, enum: SEVERITIES, default: 'Medium' },
 
     // Free-text location, matching the frontend's plain text field
-    // (e.g. "Terminus Market, near Gate 2") rather than coordinates.
+    // (e.g. "near Terminus Market") rather than coordinates.
     location: { type: String, required: true, trim: true },
 
-    // One of the 10 Jos, Plateau State regions - this is what every
-    // "my area vs. all of Jos" toggle in the frontend (Home, Feed,
-    // Alerts, Manage) filters on. Not sent by the client: it's snapshotted
-    // from the submitting user's own `region` (see routes/reports.routes.js),
-    // the same way `reporter` is snapshotted from their name.
-    region: { type: String, enum: REGIONS, required: true, index: true },
+    // The broader area this report belongs to (e.g. "Terminus"). This is
+    // what every "mine" vs "all of Jos" toggle across the frontend (home,
+    // feed, alerts, manage, admin dashboard, incident detail) filters and
+    // displays on - it is NOT the same as `location`, which is the
+    // free-text detail the reporter typed. Defaults to the submitting
+    // user's own region since the report form itself doesn't ask for it.
+    region: { type: String, enum: REGIONS, required: true },
 
     // Snapshot of the reporter's display name at submission time, so the
     // feed still reads correctly even if the account is later renamed/
@@ -63,9 +64,11 @@ const reportSchema = new mongoose.Schema(
 
 reportSchema.index({ category: 1 });
 reportSchema.index({ status: 1 });
+reportSchema.index({ region: 1 });
 reportSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Report', reportSchema);
 module.exports.CATEGORIES = CATEGORIES;
 module.exports.STATUSES = STATUSES;
 module.exports.SEVERITIES = SEVERITIES;
+module.exports.REGIONS = REGIONS;

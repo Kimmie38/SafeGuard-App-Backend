@@ -18,15 +18,22 @@ async function connectDB() {
     console.warn('MongoDB disconnected');
   });
 
+  // Enable optional debug logging when needed (set MONGOOSE_DEBUG=true)
+  if (process.env.MONGOOSE_DEBUG === 'true') {
+    mongoose.set('debug', true);
+  }
+
+  const connectOptions = {
+    serverSelectionTimeoutMS: Number(process.env.MONGO_SERVER_SELECTION_TIMEOUT_MS) || 30000,
+    connectTimeoutMS: Number(process.env.MONGO_CONNECT_TIMEOUT_MS) || 30000,
+    socketTimeoutMS: Number(process.env.MONGO_SOCKET_TIMEOUT_MS) || 45000,
+    family: 4, // prefer IPv4 to avoid dual-stack DNS issues
+  };
+
   try {
-    await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: Number(process.env.MONGO_SERVER_SELECTION_TIMEOUT_MS) || 10000,
-      // Mongoose 6+ enables these by default, but keeping them explicit
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(uri, connectOptions);
   } catch (err) {
-    console.error('Error during initial MongoDB connect:', err.message);
+    console.error('Error during initial MongoDB connect:', err && err.stack ? err.stack : err);
     throw err;
   }
 }

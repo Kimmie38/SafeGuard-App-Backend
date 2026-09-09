@@ -1,8 +1,7 @@
 /**
  * Seeds the database with the same content as the frontend's
- * data/reports.json and data/alerts.json (Jos, Plateau State), plus two
- * demo accounts, so the API-backed app looks identical to the mocked
- * prototype on first run.
+ * data/reports.json and data/alerts.json, plus two demo accounts, so the
+ * API-backed app looks identical to the mocked prototype on first run.
  *
  * Usage: pnpm seed
  */
@@ -16,7 +15,9 @@ const Report = require('./models/Report');
 const Alert = require('./models/Alert');
 const { Counter } = require('./models/Counter');
 
-// Matches the frontend's data/reports.json exactly, region included.
+// Mirrors data/reports.json exactly, minus `timeAgo` (the backend stores
+// `createdAt` instead - the frontend formats that into a "timeAgo" string
+// itself, see utils/time.ts).
 const REPORTS_SEED = [
   {
     id: 'ER-2024-001',
@@ -58,8 +59,7 @@ const REPORTS_SEED = [
     id: 'ER-2024-004',
     category: 'Accident',
     title: 'Two-vehicle collision at Farin Gada roundabout',
-    description:
-      'Minor injuries reported, road partially blocked in both directions. Traffic wardens have been notified.',
+    description: 'Minor injuries reported, road partially blocked in both directions. Traffic wardens have been notified.',
     status: 'Responding',
     reporter: 'David Okafor',
     location: 'Farin Gada Roundabout',
@@ -82,8 +82,7 @@ const REPORTS_SEED = [
     id: 'ER-2024-006',
     category: 'Domestic Threat',
     title: 'Loud domestic disturbance reported',
-    description:
-      'Neighbors reported shouting and signs of a physical altercation. Community leaders alerted for a welfare check.',
+    description: 'Neighbors reported shouting and signs of a physical altercation. Community leaders alerted for a welfare check.',
     status: 'Active',
     reporter: 'Anonymous',
     location: 'Tudun Wada residential area',
@@ -104,9 +103,13 @@ const REPORTS_SEED = [
   },
 ];
 
-// Matches the frontend's data/alerts.json exactly, including "Naraguta" on
-// AL-005 - that's not one of the 10 REGIONS dropdown values, which is
-// exactly why Alert.region is free text rather than an enum (see the model).
+// Mirrors data/alerts.json, minus `timeAgo` (same reasoning as above) and
+// its `id` (Mongo generates its own, exposed as a string `id` via the
+// Alert model's toJSON transform). NOTE: the frontend's own seed data
+// tags one alert with region "Naraguta", which isn't in the REGIONS list
+// used anywhere else in the app (constants/theme.ts) - treating that one
+// as a global alert (region: null) here rather than seeding an invalid
+// enum value.
 const ALERTS_SEED = [
   {
     type: 'Emergency',
@@ -144,7 +147,7 @@ const ALERTS_SEED = [
     title: 'Report resolved',
     message: 'Your report #ER-2024-005 has been marked as resolved',
     unread: false,
-    region: 'Naraguta',
+    region: null, // see note above (was "Naraguta" in the frontend's seed)
     relatedReportId: 'ER-2024-005',
   },
   {
@@ -170,15 +173,11 @@ async function seed() {
   const residentPasswordHash = await bcrypt.hash('password123', 10);
   const adminPasswordHash = await bcrypt.hash('password123', 10);
 
-  // Region here is each account's own area/coverage - matches the frontend
-  // default state (AppContext defaults userRegion to REGIONS[0], "Jos
-  // North") and gives the demo admin a coverage area with real activity
-  // (ER-2024-001 is in Terminus) to see on their dashboard.
   const resident = await User.create({
     name: 'John Doe',
     email: 'john.doe@example.com',
     phone: '+234 800 000 0000',
-    region: 'Jos North',
+    estate: 'Terminus',
     passwordHash: residentPasswordHash,
     role: 'resident',
   });
@@ -187,7 +186,7 @@ async function seed() {
     name: 'Officer Johnson',
     email: 'officer.johnson@example.com',
     phone: '+234 801 000 0000',
-    region: 'Terminus',
+    estate: 'Terminus',
     passwordHash: adminPasswordHash,
     role: 'admin',
   });
@@ -211,8 +210,8 @@ async function seed() {
 
   console.log('Seed complete:');
   console.log(`  ${REPORTS_SEED.length} reports, ${ALERTS_SEED.length} alerts`);
-  console.log('  Demo resident login -> email: john.doe@example.com, password: password123 (region: Jos North)');
-  console.log('  Demo admin login    -> email: officer.johnson@example.com, password: password123 (region: Terminus)');
+  console.log('  Demo resident login -> email: john.doe@example.com, password: password123');
+  console.log('  Demo admin login    -> email: officer.johnson@example.com, password: password123');
 
   process.exit(0);
 }
