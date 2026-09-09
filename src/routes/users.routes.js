@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { authenticate } = require('../middleware/auth');
+const { REGIONS } = require('../config/regions');
 
 const router = express.Router();
 router.use(authenticate);
@@ -27,7 +28,7 @@ router.patch(
   [
     body('name').optional().trim().notEmpty(),
     body('phone').optional().trim(),
-    body('estate').optional().trim(),
+    body('region').optional().isIn(REGIONS).withMessage(`region must be one of: ${REGIONS.join(', ')}`),
   ],
   async (req, res, next) => {
     try {
@@ -39,10 +40,10 @@ router.patch(
       const user = await User.findById(req.user.id);
       if (!user) return res.status(404).json({ error: 'User not found' });
 
-      const { name, phone, estate } = req.body;
+      const { name, phone, region } = req.body;
       if (name !== undefined) user.name = name;
       if (phone !== undefined) user.phone = phone;
-      if (estate !== undefined) user.estate = estate;
+      if (region !== undefined) user.region = region;
 
       await user.save();
       res.json({ user: user.toSafeJSON() });

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { REGIONS } = require('../config/regions');
 
 const CATEGORIES = [
   'Robbery',
@@ -35,8 +36,15 @@ const reportSchema = new mongoose.Schema(
     severity: { type: String, enum: SEVERITIES, default: 'Medium' },
 
     // Free-text location, matching the frontend's plain text field
-    // (e.g. "Lekki Phase 1, near Gate 2") rather than coordinates.
+    // (e.g. "Terminus Market, near Gate 2") rather than coordinates.
     location: { type: String, required: true, trim: true },
+
+    // One of the 10 Jos, Plateau State regions - this is what every
+    // "my area vs. all of Jos" toggle in the frontend (Home, Feed,
+    // Alerts, Manage) filters on. Not sent by the client: it's snapshotted
+    // from the submitting user's own `region` (see routes/reports.routes.js),
+    // the same way `reporter` is snapshotted from their name.
+    region: { type: String, enum: REGIONS, required: true, index: true },
 
     // Snapshot of the reporter's display name at submission time, so the
     // feed still reads correctly even if the account is later renamed/

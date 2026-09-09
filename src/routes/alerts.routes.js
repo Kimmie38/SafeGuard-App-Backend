@@ -37,18 +37,22 @@ router.post(
     body('title').trim().notEmpty().isLength({ max: 140 }),
     body('message').trim().notEmpty().isLength({ max: 500 }),
     body('relatedReportId').optional().isString(),
+    // Not restricted to the REGIONS enum - see the note on Alert.region.
+    // Omit it for an all-of-Jos announcement.
+    body('region').optional().isString().trim(),
   ],
   async (req, res, next) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-      const { type, title, message, relatedReportId } = req.body;
+      const { type, title, message, relatedReportId, region } = req.body;
       const alert = new Alert({
         type,
         title,
         message,
         relatedReportId: relatedReportId || null,
+        region: region || null,
         createdBy: req.user.id,
         unread: true,
       });

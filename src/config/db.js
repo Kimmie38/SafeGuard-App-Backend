@@ -18,9 +18,17 @@ async function connectDB() {
     console.warn('MongoDB disconnected');
   });
 
-  await mongoose.connect(uri, {
-    serverSelectionTimeoutMS: Number(process.env.MONGO_SERVER_SELECTION_TIMEOUT_MS) || 10000,
-  });
+  try {
+    await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: Number(process.env.MONGO_SERVER_SELECTION_TIMEOUT_MS) || 10000,
+      // Mongoose 6+ enables these by default, but keeping them explicit
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+  } catch (err) {
+    console.error('Error during initial MongoDB connect:', err.message);
+    throw err;
+  }
 }
 
 module.exports = connectDB;

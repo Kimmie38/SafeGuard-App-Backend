@@ -3,6 +3,7 @@ const { body, param, query, validationResult } = require('express-validator');
 const Report = require('../models/Report');
 const { nextSequence } = require('../models/Counter');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { REGIONS } = require('../config/regions');
 
 const { CATEGORIES, STATUSES, SEVERITIES } = Report;
 const SEVERITY_ORDER = { Critical: 0, High: 1, Medium: 2, Low: 3 };
@@ -21,7 +22,10 @@ async function generatePublicId() {
  * Matches the frontend's report.tsx submission: category, title,
  * description, location (free text), severity, images (array of already-
  * uploaded URLs - see POST /api/uploads/images). Always created as 'Active',
- * reporter name snapshotted from the logged-in user.
+ * reporter name AND region snapshotted from the logged-in user - the
+ * report form itself has no region field, exactly like AppContext's
+ * addReport() pulls `region: userRegion` from context rather than the
+ * submitted form data.
  */
 router.post(
   '/',
@@ -51,6 +55,7 @@ router.post(
         title,
         description,
         location,
+        region: req.user.region,
         severity: severity || 'Medium',
         images: images || [],
         status: 'Active',
@@ -71,13 +76,19 @@ router.post(
  * GET /api/reports
  * Community-wide feed (matches feed.tsx / home screens - full detail is
  * visible to every resident, no anonymization in this design).
- * Query params: category, status, sort ("latest" default | "severity")
+ * Query params: category, status, region, sort ("latest" default | "severity")
+ * `region` is optional - the frontend currently fetches everything and does
+ * its "my area vs. all of Jos" filtering client-side (Home, Feed, Alerts,
+ * Manage all do this), so this param isn't required for a drop-in swap.
+ * It's here so that filtering can move server-side later without an API
+ * change, e.g. once report volume makes client-side filtering wasteful.
  */
 router.get(
   '/',
   [
     query('category').optional().isIn(CATEGORIES),
     query('status').optional().isIn(STATUSES),
+    query('region').optional().isIn(REGIONS),
     query('sort').optional().isIn(['latest', 'severity']),
   ],
   async (req, res, next) => {
@@ -85,10 +96,11 @@ router.get(
       const errors = validationResult(req);
       if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-      const { category, status, sort } = req.query;
+      const { category, status, region, sort } = req.query;
       const filter = {};
       if (category) filter.category = category;
       if (status) filter.status = status;
+      if (region) filter.region = region;
 
       let reports = await Report.find(filter).sort({ createdAt: -1 });
 

@@ -3,12 +3,13 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
+const { REGIONS } = require('../config/regions');
 
 const router = express.Router();
 
 function signToken(user) {
   return jwt.sign(
-    { id: user._id.toString(), role: user.role, name: user.name },
+    { id: user._id.toString(), role: user.role, name: user.name, region: user.region },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
@@ -16,7 +17,11 @@ function signToken(user) {
 
 /**
  * POST /api/auth/register
- * Matches the frontend's register form: name, email, phone, estate, password.
+ * Matches the frontend's register form: name, email, phone, region,
+ * password (`confirm` is frontend-only and never sent). `region` is the
+ * area dropdown scoped to Jos, Plateau State - required, since every
+ * account needs to be region-scoped for the frontend's "my area vs. all
+ * of Jos" toggles to work.
  * Registers a resident by default. Passing a valid adminCode registers an
  * admin instead - the current frontend prototype doesn't send this (its
  * login screen just has a Resident/Admin toggle with no real auth), so for
@@ -30,7 +35,7 @@ router.post(
     body('email').trim().isEmail().withMessage('A valid email is required').normalizeEmail(),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     body('phone').optional().trim(),
-    body('estate').optional().trim(),
+    body('region').isIn(REGIONS).withMessage(`region must be one of: ${REGIONS.join(', ')}`),
     body('adminCode').optional().isString(),
   ],
   async (req, res, next) => {
@@ -40,7 +45,7 @@ router.post(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { name, email, password, phone, estate, adminCode } = req.body;
+      const { name, email, password, phone, region, adminCode } = req.body;
 
       const existing = await User.findOne({ email });
       if (existing) {
@@ -54,7 +59,7 @@ router.post(
         name,
         email,
         phone: phone || null,
-        estate: estate || null,
+        region,
         passwordHash,
         role,
       });
@@ -71,6 +76,12 @@ router.post(
 
 /**
  * POST /api/auth/login
+ * The frontend's login screen also shows a region dropdown ("your area" /
+ * "coverage area"), same as its Resident/Admin toggle - with real auth,
+ * region comes from the account (set at registration), not a client-side
+ * picker. This endpoint ignores any region sent in the body; the frontend
+ * should switch to reading `user.region` from this response, same as it
+ * already needs to do for `user.role`.
  */
 router.post(
   '/login',
