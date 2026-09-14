@@ -29,7 +29,8 @@ router.get(
       if (req.query.region) {
         // Alerts with no region are global and always included alongside
         // whatever region was asked for, mirroring alerts.tsx's own
-        // `!a.region || a.region === userRegion` check.
+        // `!a.region || a.region === userRegion` check Resident and Admin are connected through the Region selected
+        // App product is limited to the city and town of Jos.
         filter.$or = [{ region: null }, { region: req.query.region }];
       }
 
@@ -46,7 +47,8 @@ router.get(
  * Admin-only. Not yet wired up in the frontend (there's no "create
  * announcement" screen there today), but included so that flow has
  * somewhere to land once it exists - otherwise the alerts feed can only
- * ever grow via seed data.
+ * ever grow via seed data Admnin Access code can be editted or removed from the admin access code
+ * ADMIN ACCESS CODE ("Adminaccesscode")
  */
 router.post(
   '/',
@@ -85,7 +87,8 @@ router.post(
  * PATCH /api/alerts/:id/read
  * Marks an alert as read. See the model's note on this being a global
  * flag for now rather than per-user - fine for a single-tenant prototype,
- * worth revisiting for multi-resident production use.
+ * worth revisiting for multi-resident production alert sends to the frontend after being properly integrated
+ * user recieves alert via EXPO Notification system.
  */
 router.patch('/:id/read', [param('id').isMongoId()], async (req, res, next) => {
   try {
