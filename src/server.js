@@ -11,6 +11,8 @@ const userRoutes = require('./routes/users.routes');
 const reportRoutes = require('./routes/reports.routes');
 const alertRoutes = require('./routes/alerts.routes');
 const uploadRoutes = require('./routes/uploads.routes');
+const responderRoutes = require('./routes/responders.routes');
+const notificationRoutes = require('./routes/notifications.routes');
 
 const app = express();
 
@@ -30,6 +32,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/uploads', uploadRoutes);
+app.use('/api/responders', responderRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // 404 handler
 app.use((req, res) => {
