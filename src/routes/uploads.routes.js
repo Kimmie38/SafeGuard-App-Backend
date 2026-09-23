@@ -49,7 +49,7 @@ router.post('/images', (req, res) => {
       return res.status(400).json({ error: 'No image files were provided' });
     }
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = (process.env.PUBLIC_API_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
     const urls = req.files.map((f) => `${baseUrl}/uploads/${f.filename}`);
     res.status(201).json({ urls });
   });

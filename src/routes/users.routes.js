@@ -27,7 +27,7 @@ router.patch(
   '/me',
   [
     body('name').optional().trim().notEmpty(),
-    body('phone').optional().trim(),
+    body('phone').optional().trim().matches(/^\+234\d{10}$/).withMessage('phone must use +234 followed by 10 digits'),
     body('estate').optional().trim(),
     body('region').optional().isIn(REGIONS).withMessage(`region must be one of: ${REGIONS.join(', ')}`),
     body('notificationPreferences').optional().isObject(),

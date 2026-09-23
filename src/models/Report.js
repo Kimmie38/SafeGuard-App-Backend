@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { REGIONS } = require('../config/regions');
 
 const CATEGORIES = ['Robbery', 'Fire Outbreak', 'Medical Emergency', 'Accident', 'Suspicious Activity', 'Domestic Threat'];
-const STATUSES = ['Active', 'Assigned', 'Acknowledged', 'Responding', 'On Scene', 'Resolved', 'Rejected'];
+const STATUSES = ['Active', 'Pending', 'Assigned', 'Acknowledged', 'Ongoing', 'Responding', 'On Scene', 'Completed', 'Resolved', 'Rejected'];
 const SEVERITIES = ['Critical', 'High', 'Medium', 'Low'];
 const VERIFICATION_STATUSES = ['Unverified', 'Pending review', 'Verified', 'Rejected'];
 
