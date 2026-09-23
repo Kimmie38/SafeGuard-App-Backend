@@ -12,12 +12,22 @@ router.use(authenticate);
 
 const responderFields = 'name email phone agency responderRole incidentTypes serviceArea location isAvailable isApproved createdAt updatedAt';
 
+router.get('/available', async (req, res, next) => {
+  try {
+    const filter = { role: 'responder', isApproved: true, isAvailable: true };
+    if (req.query.region) filter.serviceArea = req.query.region;
+    if (req.query.incidentType) filter.incidentTypes = req.query.incidentType;
+    const responders = await User.find(filter).select('name agency responderRole incidentTypes serviceArea location isAvailable').sort({ agency: 1, name: 1 });
+    res.json({ responders });
+  } catch (err) { next(err); }
+});
+
 router.get('/', requireRole('admin'), [query('region').optional().isIn(REGIONS)], async (req, res, next) => {
   try {
     const filter = { role: 'responder' };
     if (req.query.region) filter.serviceArea = req.query.region;
-    else if (req.user.estate) filter.serviceArea = req.user.estate;
-    res.json({ responders: await User.find(filter).select(responderFields).sort({ isAvailable: -1, name: 1 }) });
+    const responders = await User.find(filter).select(responderFields).sort({ isAvailable: -1, name: 1 }).lean();
+    res.json({ responders: responders.map((responder) => ({ ...responder, id: String(responder._id), _id: undefined })) });
   } catch (err) { next(err); }
 });
 

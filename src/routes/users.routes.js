@@ -30,6 +30,10 @@ router.patch(
     body('phone').optional().trim(),
     body('estate').optional().trim(),
     body('region').optional().isIn(REGIONS).withMessage(`region must be one of: ${REGIONS.join(', ')}`),
+    body('notificationPreferences').optional().isObject(),
+    body('privacySettings').optional().isObject(),
+    body('isAvailable').optional().isBoolean(),
+    body('location').optional().isObject(),
   ],
   async (req, res, next) => {
     try {
@@ -41,11 +45,15 @@ router.patch(
       const user = await User.findById(req.user.id);
       if (!user) return res.status(404).json({ error: 'User not found' });
 
-      const { name, phone, estate, region } = req.body;
+      const { name, phone, estate, region, notificationPreferences, privacySettings, isAvailable, location } = req.body;
       if (name !== undefined) user.name = name;
       if (phone !== undefined) user.phone = phone;
       if (region !== undefined) user.estate = region;
       else if (estate !== undefined) user.estate = estate;
+      if (notificationPreferences) user.notificationPreferences = { ...user.notificationPreferences.toObject(), ...notificationPreferences };
+      if (privacySettings) user.privacySettings = { ...user.privacySettings.toObject(), ...privacySettings };
+      if (isAvailable !== undefined && user.role === 'responder') user.isAvailable = isAvailable;
+      if (location && user.role === 'responder') user.location = location;
 
       await user.save();
       res.json({ user: user.toSafeJSON() });

@@ -30,6 +30,15 @@ const userSchema = new mongoose.Schema(
     isAvailable: { type: Boolean, default: true },
     isApproved: { type: Boolean, default: false },
     expoPushTokens: { type: [String], default: [] },
+    notificationPreferences: {
+      emergency: { type: Boolean, default: true },
+      assignments: { type: Boolean, default: true },
+      updates: { type: Boolean, default: true },
+    },
+    privacySettings: {
+      anonymousReports: { type: Boolean, default: false },
+      shareLocation: { type: Boolean, default: true },
+    },
   },
   { timestamps: true }
 );

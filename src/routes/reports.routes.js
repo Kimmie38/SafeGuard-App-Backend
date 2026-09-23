@@ -103,7 +103,6 @@ router.get('/', [query('category').optional().isIn(CATEGORIES), query('status').
     if (req.query.category) filter.category = req.query.category;
     if (req.query.status) filter.status = req.query.status;
     if (req.query.region) filter.region = req.query.region;
-    if (req.user.role === 'responder') filter.$or = [{ assignedResponderId: req.user.id }, { routedResponderIds: req.user.id }];
     let reports = await populateResponder(Report.find(filter).sort({ createdAt: -1 }));
     if (req.query.sort === 'severity') reports = reports.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
     res.json({ reports });
@@ -123,7 +122,7 @@ router.post('/:id/assign', requireRole('admin'), [param('id').notEmpty(), body('
     const responder = await User.findOne({ _id: req.body.responderId, role: 'responder', isApproved: true, isAvailable: true });
     if (!report || !admin) return res.status(404).json({ error: 'Incident not found' });
     if (admin.estate !== report.region) return res.status(403).json({ error: 'You can only manage incidents in your coverage area.' });
-    if (!responder || !responder.serviceArea.includes(report.region) || !responder.incidentTypes.includes(responderCategoryForIncident(report.category))) return res.status(400).json({ error: 'Responder is not authorized for this incident and area.' });
+    if (!responder || !responder.incidentTypes.includes(responderCategoryForIncident(report.category))) return res.status(400).json({ error: 'Responder is not active or is not authorized for this incident type.' });
     report.assignedResponderId = responder._id;
     report.assignedAgency = responder.agency;
     report.routedResponderIds = [...new Set([...(report.routedResponderIds || []).map(String), responder._id.toString()])];
