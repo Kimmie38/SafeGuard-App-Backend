@@ -75,6 +75,32 @@ router.post(
   }
 );
 
+router.post(
+  '/responder-register',
+  [
+    body('name').trim().notEmpty().withMessage('Name is required'),
+    body('email').trim().isEmail().withMessage('A valid email is required').normalizeEmail(),
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+    body('phone').optional().trim(),
+    body('agency').trim().notEmpty().withMessage('Agency is required'),
+    body('responderRole').trim().notEmpty().withMessage('Responder role is required'),
+    body('incidentTypes').isArray({ min: 1 }).withMessage('Select at least one incident category'),
+    body('serviceArea').isArray({ min: 1 }).withMessage('Select at least one service area'),
+    body('serviceArea.*').isIn(REGIONS).withMessage(`serviceArea must contain valid regions: ${REGIONS.join(', ')}`),
+  ],
+  async (req, res, next) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+      const { name, email, password, phone, agency, responderRole, incidentTypes, serviceArea } = req.body;
+      if (incidentTypes.some((type) => !User.RESPONDER_CATEGORIES.includes(type))) return res.status(400).json({ error: 'One or more responder categories are invalid' });
+      if (await User.findOne({ email })) return res.status(409).json({ error: 'An account with this email already exists' });
+      const user = await User.create({ name, email, phone: phone || null, passwordHash: await bcrypt.hash(password, 10), role: 'responder', agency, responderRole, incidentTypes, serviceArea, isAvailable: false, isApproved: false });
+      res.status(201).json({ user: user.toSafeJSON(), pendingApproval: true, message: 'Your responder application was submitted for Area Chairman approval.' });
+    } catch (err) { next(err); }
+  }
+);
+
 /**
  * POST /api/auth/login
  */
