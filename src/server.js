@@ -20,8 +20,9 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
-const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || './uploads');
-app.use('/uploads', express.static(UPLOAD_DIR));
+// Report images are uploaded straight to Cloudinary (see uploads.routes.js)
+// and served from Cloudinary's CDN, so there's no local /uploads static
+// directory to serve anymore.
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'safeguard-backend' });

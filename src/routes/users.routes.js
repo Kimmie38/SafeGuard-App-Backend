@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { authenticate } = require('../middleware/auth');
@@ -57,6 +58,42 @@ router.patch(
 
       await user.save();
       res.json({ user: user.toSafeJSON() });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * PATCH /api/users/me/password
+ * Lets a signed-in user change their own password from the app's
+ * "Change password" screen. Requires the current password so a
+ * stolen/left-open session can't silently lock the real owner out.
+ */
+router.patch(
+  '/me/password',
+  [
+    body('currentPassword').notEmpty().withMessage('Current password is required'),
+    body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters'),
+  ],
+  async (req, res, next) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+      const user = await User.findById(req.user.id).select('+passwordHash');
+      if (!user) return res.status(404).json({ error: 'User not found' });
+
+      const matches = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!matches) return res.status(401).json({ error: 'Current password is incorrect' });
+
+      user.passwordHash = await bcrypt.hash(newPassword, 10);
+      await user.save();
+
+      res.json({ success: true });
     } catch (err) {
       next(err);
     }
